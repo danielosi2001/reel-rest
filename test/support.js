@@ -1,0 +1,37 @@
+// ---------------------------------------------------------------------------
+// OWNER: Person A  —  test scaffolding
+//
+// Mounts Person A's router the way server.js does, but on an ephemeral port, so
+// the tests exercise the real Express stack (routing, :id params, JSON parsing)
+// without booting the whole app or touching port 3000.
+// ---------------------------------------------------------------------------
+const express = require('express');
+
+const startServer = (mount) => {
+  const app = express();
+  app.use(express.json());
+  mount(app);
+
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  const request = async (path, options = {}) => {
+    const { body, ...rest } = options;
+    const response = await fetch(`http://localhost:${port}${path}`, {
+      ...rest,
+      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...rest.headers },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const text = await response.text();
+    return {
+      status: response.status,
+      headers: response.headers,
+      json: text ? JSON.parse(text) : null,
+      text,
+    };
+  };
+
+  return { server, request, close: () => new Promise((resolve) => server.close(resolve)) };
+};
+
+module.exports = { startServer };

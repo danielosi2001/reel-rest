@@ -12,8 +12,13 @@ npm start
 ```
 
 Then open <http://localhost:3000>. (Set `PORT` to use another port.)
-No database, no build step, no environment file — the data is loaded from `data/*.json`
-into memory at boot, and a restart resets everything.
+
+Node 18 or newer. No database, no build step, no bundler, no environment file — the data
+is read from `data/*.json` into memory at boot, and a restart resets everything.
+
+```bash
+npm test        # 30 tests, no test framework to install — node --test
+```
 
 ## Pages
 
@@ -26,19 +31,32 @@ into memory at boot, and a restart resets everything.
 
 | Method | Path | Behaviour | Success | Errors |
 | --- | --- | --- | --- | --- |
-| GET | `/api/movies` | List; `genre`, `minYear`, `minRating`, `q`, `sort`, `order` | 200 | 400 |
-| GET | `/api/movies/:id` | One movie | 200 | 404 |
-| POST | `/api/movies` | Create from JSON body | 201 | 400 |
-| PATCH | `/api/movies/:id` | Partial update | 200 | 404 / 400 |
-| DELETE | `/api/movies/:id` | Remove movie **and its reviews** | 204 | 404 |
+| GET | `/api/movies` | List; `genre`, `q`, `minYear`, `maxYear`, `minRating`, `inStock`, `sort`, `order`, `limit`, `offset` | 200 | 400 |
+| GET | `/api/movies/:id` | One movie, plus `links` to its reviews | 200 | 400 / 404 |
+| POST | `/api/movies` | Create from JSON body; answers with a `Location` header | 201 | 400 |
+| PUT | `/api/movies/:id` | Full replace — omitted optional fields go back to their defaults | 200 | 400 / 404 |
+| PATCH | `/api/movies/:id` | Partial update — only the fields you send | 200 | 400 / 404 |
+| DELETE | `/api/movies/:id` | Remove movie **and its reviews** (`X-Deleted-Reviews` says how many) | 204 | 400 / 404 |
 | GET | `/api/movies/:id/reviews` | Reviews of one movie (the relation) | 200 | 404 |
 | POST | `/api/movies/:id/reviews` | Add a review to a movie | 201 | 404 / 400 |
 | GET | `/api/reviews` | List; `minScore`, `author`, `sort`, `order` | 200 | 400 |
 | PUT | `/api/reviews/:id` | Full replace | 200 | 404 / 400 |
 | DELETE | `/api/reviews/:id` | Delete a review | 204 | 404 |
 
-Every response body is a JSON **object** (`{ count, data }` or `{ data }`), never a bare
-array, so the game verdict can be merged into it.
+Every response body is a JSON **object** (`{ count, total, data }` or `{ data }`), never a
+bare array, so the game verdict can be merged into it. A 4xx body is
+`{ error, message, details? }`, where `details` lists every problem with the request at
+once. `/schemas` documents all of it, field by field, rendered from `src/schemas.js`.
+
+An id that is not a number (`/api/movies/abc`) is a **400** — the request is malformed.
+An id that is simply not there (`/api/movies/999`) is a **404** — the request was fine,
+the thing is not.
+
+Nothing is silently ignored: an unknown query param, one sent with no value, or a body
+field that is not part of the resource all come back as a 400 with the nearest valid name
+suggested (`genrre` → *did you mean genre?*). What a movie is — fields, types, ranges,
+query params, page size — is declared once in `src/model/movie.js`; the routes enforce it
+and `/schemas` publishes it, so the documentation cannot drift from the API.
 
 ## The stages
 
@@ -72,7 +90,7 @@ never rendered, never serialised and never sent. The client receives only
 
 | | Person A | Person B |
 | --- | --- | --- |
-| Back | `data/*.json`, `src/store.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5 | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–10 |
-| Front | `public/js/builder.js`, `views/schemas.ejs`, `public/css/components.css` | `public/js/api.js`, `public/js/game.js`, `views/game.ejs` + header partial, `public/css/base.css` |
+| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5, `test/` | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–10 |
+| Front | `public/js/builder.js`, `views/schemas.ejs`, `public/css/components.css`, `public/favicon.ico` | `public/js/api.js`, `public/js/game.js`, `views/game.ejs` + header partial, `public/css/base.css` |
 
 `src/game/stages/index.js` merges the two spec files and belongs to neither.

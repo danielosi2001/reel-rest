@@ -1,10 +1,17 @@
 /* ---------------------------------------------------------------------------
- * OWNER: Person A  —  PLACEHOLDER
- * Builder controls, param rows, focus states, schema table. Person A replaces
- * this file wholesale; it only uses tokens declared in base.css.
+ * OWNER: Person A  —  the request builder and the schemas page
+ *
+ * Only tokens declared in base.css are used here, so light and dark mode come
+ * for free and the two halves of the site cannot drift apart. Layout is
+ * mobile-first: every rule below is the small-screen rule, and the media query
+ * at the bottom is where the wider screen adds columns.
  * ------------------------------------------------------------------------- */
 
+/* --- the builder --------------------------------------------------------- */
+
 .builder {
+  --method-color: var(--muted);
+
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -15,21 +22,68 @@
   box-shadow: var(--shadow);
 }
 
-.builder-line { display: flex; gap: 8px; }
+.builder[data-method="GET"]    { --method-color: var(--s-2xx); }
+.builder[data-method="POST"]   { --method-color: var(--accent); }
+.builder[data-method="PUT"]    { --method-color: var(--s-5xx); }
+.builder[data-method="PATCH"]  { --method-color: var(--s-3xx); }
+.builder[data-method="DELETE"] { --method-color: var(--s-4xx); }
 
-.select, .input, .textarea {
+.builder-line { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.select,
+.input,
+.textarea {
   font: inherit;
   color: var(--ink);
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px 11px;
+  min-width: 0;
 }
-.select { font-family: var(--mono); font-size: .85rem; font-weight: 600; flex: 0 0 auto; }
-.input-path { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: .88rem; }
+.select:hover, .input:hover, .textarea:hover { border-color: var(--muted); }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
 
+.select {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--method-color);
+  border-color: var(--method-color);
+  cursor: pointer;
+}
+
+.input-path {
+  flex: 1 1 220px;
+  font-size: .88rem;
+}
+
+/* Shown only on stages that address one resource by id. It writes into the
+ * path rather than sending anything of its own — see builder.js/composePath. */
+.route-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.input-param { flex: 0 0 7.5rem; font-size: .86rem; }
+.route-hint { font-size: .76rem; }
+
+/* The preview is built by the same code that builds the real request, so it is
+ * a promise, not a guess: this is the URL that will be sent. */
+.url-preview {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: .78rem;
+  overflow-x: auto;
+}
+.preview-method { font-weight: 700; color: var(--method-color); flex: 0 0 auto; }
+.preview-url { color: var(--ink); white-space: nowrap; }
+.preview-url.is-empty { color: var(--muted); font-style: italic; white-space: normal; }
+
 .builder-block { display: flex; flex-direction: column; gap: 8px; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .block-label {
   font-family: var(--mono);
   font-size: .68rem;
@@ -40,11 +94,14 @@
 
 .param-rows { display: flex; flex-direction: column; gap: 7px; }
 .param-rows:empty { display: none; }
-.builder-block .btn-ghost { align-self: flex-start; }
-.param-row { display: grid; grid-template-columns: 1fr 1.4fr 34px; gap: 7px; }
-.param-row .input { font-family: var(--mono); font-size: .84rem; padding: 7px 10px; }
+.builder-block > .btn-ghost { align-self: flex-start; }
+
+.param-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 34px; gap: 7px; }
+.param-row .input { font-size: .84rem; padding: 7px 10px; }
 
 .btn-icon {
+  display: grid;
+  place-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
   color: var(--muted);
@@ -55,31 +112,64 @@
 }
 .btn-icon:hover { color: var(--no); border-color: var(--no); }
 
-.textarea { font-size: .84rem; line-height: 1.55; resize: vertical; }
+.textarea { font-size: .84rem; line-height: 1.55; resize: vertical; min-height: 120px; }
 .field-error { font-size: .8rem; color: var(--no); }
+
+/* Shown when the stage has data to send but the chosen method cannot carry it. */
+.body-note {
+  font-size: .82rem;
+  color: var(--part);
+  background: var(--part-soft);
+  border: 1px solid var(--part);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
 
 /* --- schemas page -------------------------------------------------------- */
 
 .schema-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
+
 .schema-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.schema-head h2 { font-size: 1.15rem; }
+.schema-head h2 { font-size: 1.2rem; }
+.resource-name { text-transform: capitalize; }
 .schema-path { font-size: .8rem; color: var(--muted); }
+.count-badge {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.schema-section { display: flex; flex-direction: column; gap: 9px; }
+.section-label {
+  font-family: var(--mono);
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--ink);
+}
+.section-label .muted { font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
-.schema-table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+.schema-table { border-collapse: collapse; width: 100%; font-size: .84rem; }
 .schema-table th {
   text-align: left;
   font-family: var(--mono);
-  font-size: .66rem;
+  font-size: .64rem;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -91,10 +181,14 @@
 }
 .schema-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .schema-table tr:last-child td { border-bottom: 0; }
+.schema-table tbody tr:hover { background: var(--surface-2); }
+.nowrap { white-space: nowrap; }
 
-.type-pill {
+.type-pill,
+.req-pill {
+  display: inline-block;
   font-family: var(--mono);
-  font-size: .7rem;
+  font-size: .68rem;
   padding: 1px 7px;
   border-radius: 5px;
   border: 1px solid currentColor;
@@ -104,11 +198,86 @@
 .type-number { color: var(--accent); }
 .type-boolean { color: var(--s-5xx); }
 
-.schema-meta { font-size: .85rem; }
-.schema-meta code { font-size: .78rem; background: var(--surface-2); border-radius: 5px; padding: 1px 6px; margin-right: 5px; }
+.req-pill.is-required { color: var(--no); }
+.req-pill.is-optional { color: var(--muted); border-style: dashed; }
 
-@media (max-width: 560px) {
-  .builder-line { flex-wrap: wrap; }
+/* Endpoints are cards rather than a table: four columns do not survive a phone. */
+.endpoint-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.endpoint {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.endpoint-line { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.endpoint-path { font-size: .84rem; word-break: break-all; }
+.endpoint-summary { font-size: .88rem; }
+.endpoint-returns { font-size: .76rem; color: var(--muted); }
+
+.method-pill {
+  font-family: var(--mono);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.m-get    { color: var(--s-2xx); }
+.m-post   { color: var(--accent); }
+.m-put    { color: var(--s-5xx); }
+.m-patch  { color: var(--s-3xx); }
+.m-delete { color: var(--s-4xx); }
+
+.status-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.status-list li { display: flex; align-items: baseline; gap: 8px; font-size: .82rem; }
+.status-list .status-pill { flex: 0 0 auto; }
+
+.relation-note {
+  font-size: .86rem;
+  padding: 11px 13px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+}
+.relation-label {
+  font-family: var(--mono);
+  font-size: .64rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--accent);
+  margin-right: 8px;
+}
+.relation-note code { font-size: .8rem; white-space: nowrap; }
+
+.legend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.legend-item { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: .86rem; }
+.legend-name { font-weight: 600; min-width: 6.5rem; }
+
+.note-grid { display: grid; gap: 14px; }
+.note h3 { font-size: .92rem; margin-bottom: 4px; }
+.note p { font-size: .86rem; }
+
+.page-foot { font-size: .8rem; text-align: center; }
+.page-foot a { color: var(--accent); }
+
+/* --- wider screens -------------------------------------------------------- */
+
+@media (min-width: 640px) {
+  .note-grid { grid-template-columns: 1fr 1fr; }
+  .param-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) 34px; }
+}
+
+@media (max-width: 480px) {
+  .builder { padding: 13px; }
+  .select { flex: 1 1 auto; }
   .input-path { flex: 1 1 100%; }
-  .param-row { grid-template-columns: 1fr 1fr 32px; }
+  .param-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; }
+  .input-param { flex: 1 1 100%; }
+  .count-badge { margin-left: 0; }
+  .legend-name { min-width: 0; }
 }

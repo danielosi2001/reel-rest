@@ -35,12 +35,13 @@ app.get('/', (req, res) => {
   });
 });
 
-// OWNER: Person A — placeholder route for the second SSR page.
+// OWNER: Person A — the second SSR page. Everything it shows is built here and
+// baked into the HTML by EJS; the browser makes no request of its own for it.
 app.get('/schemas', (req, res) => {
   res.render('schemas', {
     title: 'Schemas · Reel REST',
     page: 'schemas',
-    schemas,
+    ...schemas.pageModel(),
   });
 });
 
