@@ -1,3 +1,12 @@
+<%#
+  OWNER: Person A — the second server-rendered page.
+
+  Everything below is produced on the server: src/schemas.js is passed in by the
+  /schemas route and EJS turns it into HTML before the response leaves. The
+  browser runs no JavaScript here and fetches nothing — view-source shows the
+  finished tables. That is the contrast with the game page, which is rendered
+  once and then updated by AJAX.
+%>
 <!doctype html>
 <html lang="en">
 <head>
@@ -11,39 +20,140 @@
   <%- include('partials/header', { page }) %>
 
   <main class="shell">
+
     <section class="brief">
       <p class="eyebrow">Reference</p>
-      <h1 class="stage-title">Resources and fields</h1>
-      <p class="scenario">Everything the archive stores, and the query params each collection understands. Rendered on the server from <code>src/schemas.js</code>.</p>
+      <h1 class="stage-title">Resources, fields and routes</h1>
+      <p class="scenario">
+        Two resources, ten endpoints, one shape of answer. This page is rendered on the server
+        from <code class="mono">src/schemas.js</code> — the counts below are the rows living in the
+        server's memory right now, so anything you create or delete in the game shows up here on the
+        next reload.
+      </p>
+      <div class="needs">
+        <% resources.forEach((resource) => { %>
+          <span class="need-chip"><%= resource.count %> <%= resource.plural %></span>
+        <% }) %>
+      </div>
     </section>
 
-    <% schemas.forEach(function (schema) { %>
-      <section class="schema-card">
+    <% resources.forEach((resource) => { %>
+      <section class="schema-card" id="<%= resource.plural %>">
         <div class="schema-head">
-          <h2><%= schema.resource %></h2>
-          <code class="mono schema-path"><%= schema.basePath %></code>
+          <h2 class="resource-name"><%= resource.name %></h2>
+          <code class="mono schema-path"><%= resource.basePath %></code>
+          <span class="count-badge"><%= resource.count %> in memory</span>
         </div>
-        <p class="scenario"><%= schema.description %></p>
-        <div class="table-wrap">
-          <table class="schema-table">
-            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
-            <tbody>
-              <% schema.fields.forEach(function (field) { %>
-                <tr>
-                  <td class="mono"><%= field.name %></td>
-                  <td><span class="type-pill type-<%= field.type %>"><%= field.type %></span></td>
-                  <td class="muted"><%= field.notes %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
+        <p class="scenario"><%= resource.description %></p>
+
+        <div class="schema-section">
+          <h3 class="section-label">Fields</h3>
+          <div class="table-wrap">
+            <table class="schema-table">
+              <thead>
+                <tr><th>Field</th><th>Type</th><th>On write</th><th>Example</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <% resource.fields.forEach((field) => { %>
+                  <tr>
+                    <td class="mono"><%= field.name %></td>
+                    <td><span class="type-pill type-<%= field.type %>"><%= field.type %></span></td>
+                    <td>
+                      <span class="req-pill <%= field.required ? 'is-required' : 'is-optional' %>">
+                        <%= field.required ? 'required' : 'optional' %>
+                      </span>
+                    </td>
+                    <td class="mono nowrap"><%= field.example %></td>
+                    <td class="muted"><%= field.notes %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <p class="schema-meta"><b>Query params:</b>
-          <% schema.query.forEach(function (name) { %><code class="mono"><%= name %></code><% }) %>
+
+        <div class="schema-section">
+          <h3 class="section-label">Query parameters <span class="muted">on <%= resource.basePath %></span></h3>
+          <div class="table-wrap">
+            <table class="schema-table">
+              <thead>
+                <tr><th>Param</th><th>Type</th><th>What it does</th><th>Example</th></tr>
+              </thead>
+              <tbody>
+                <% resource.query.forEach((param) => { %>
+                  <tr>
+                    <td class="mono"><%= param.name %></td>
+                    <td><span class="type-pill type-<%= param.type %>"><%= param.type %></span></td>
+                    <td><%= param.description %></td>
+                    <td class="mono nowrap"><%= param.example %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="schema-section">
+          <h3 class="section-label">Endpoints</h3>
+          <ul class="endpoint-list">
+            <% endpoints.filter((endpoint) => endpoint.resource === resource.name).forEach((endpoint) => { %>
+              <li class="endpoint">
+                <p class="endpoint-line">
+                  <span class="method-pill m-<%= endpoint.method.toLowerCase() %>"><%= endpoint.method %></span>
+                  <code class="mono endpoint-path"><%= endpoint.path %></code>
+                </p>
+                <p class="endpoint-summary"><%= endpoint.summary %></p>
+                <p class="endpoint-returns mono">→ <%= endpoint.returns %></p>
+                <ul class="status-list">
+                  <% endpoint.statuses.forEach((status) => { %>
+                    <li>
+                      <span class="status-pill <%= status.code < 300 ? 'is-2xx' : (status.code < 500 ? 'is-4xx' : 'is-5xx') %>"><%= status.code %></span>
+                      <span class="muted"><%= status.meaning %></span>
+                    </li>
+                  <% }) %>
+                </ul>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+
+        <p class="relation-note">
+          <span class="relation-label">Relation</span>
+          <%= resource.relation.text %>
+          <code class="mono"><%= resource.relation.path %></code>
         </p>
-        <p class="schema-meta"><b>Relation:</b> <span class="muted"><%= schema.relation %></span></p>
       </section>
     <% }) %>
+
+    <section class="schema-card">
+      <div class="schema-head"><h2>Status codes you will meet</h2></div>
+      <ul class="legend-list">
+        <% statusCodes.forEach((status) => { %>
+          <li class="legend-item">
+            <span class="status-pill <%= status.code < 300 ? 'is-2xx' : 'is-4xx' %>"><%= status.code %></span>
+            <span class="legend-name"><%= status.name %></span>
+            <span class="muted"><%= status.meaning %></span>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <section class="schema-card">
+      <div class="schema-head"><h2>How this API behaves</h2></div>
+      <div class="note-grid">
+        <% conventions.forEach((convention) => { %>
+          <article class="note">
+            <h3><%= convention.title %></h3>
+            <p class="muted"><%= convention.text %></p>
+          </article>
+        <% }) %>
+      </div>
+    </section>
+
+    <p class="page-foot muted">
+      Rendered on the server with EJS · <a href="/">back to the game</a>
+    </p>
+
   </main>
 </body>
 </html>

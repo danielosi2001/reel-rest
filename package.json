@@ -4,7 +4,8 @@
   "description": "A 10-stage browser game that teaches HTTP by making the player compose real requests against a real Express API.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "license": "MIT",
   "dependencies": {
