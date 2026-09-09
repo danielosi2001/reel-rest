@@ -1,0 +1,114 @@
+/* ---------------------------------------------------------------------------
+ * OWNER: Person A  —  PLACEHOLDER
+ * Builder controls, param rows, focus states, schema table. Person A replaces
+ * this file wholesale; it only uses tokens declared in base.css.
+ * ------------------------------------------------------------------------- */
+
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.builder-line { display: flex; gap: 8px; }
+
+.select, .input, .textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.select { font-family: var(--mono); font-size: .85rem; font-weight: 600; flex: 0 0 auto; }
+.input-path { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: .88rem; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+
+.builder-block { display: flex; flex-direction: column; gap: 8px; }
+.block-label {
+  font-family: var(--mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+}
+
+.param-rows { display: flex; flex-direction: column; gap: 7px; }
+.param-rows:empty { display: none; }
+.builder-block .btn-ghost { align-self: flex-start; }
+.param-row { display: grid; grid-template-columns: 1fr 1.4fr 34px; gap: 7px; }
+.param-row .input { font-family: var(--mono); font-size: .84rem; padding: 7px 10px; }
+
+.btn-icon {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 8px;
+  line-height: 1;
+  font-size: 1.05rem;
+  padding: 0;
+}
+.btn-icon:hover { color: var(--no); border-color: var(--no); }
+
+.textarea { font-size: .84rem; line-height: 1.55; resize: vertical; }
+.field-error { font-size: .8rem; color: var(--no); }
+
+/* --- schemas page -------------------------------------------------------- */
+
+.schema-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.schema-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.schema-head h2 { font-size: 1.15rem; }
+.schema-path { font-size: .8rem; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.schema-table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+.schema-table th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: .66rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  background: var(--surface-2);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.schema-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.schema-table tr:last-child td { border-bottom: 0; }
+
+.type-pill {
+  font-family: var(--mono);
+  font-size: .7rem;
+  padding: 1px 7px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.type-string { color: var(--s-2xx); }
+.type-number { color: var(--accent); }
+.type-boolean { color: var(--s-5xx); }
+
+.schema-meta { font-size: .85rem; }
+.schema-meta code { font-size: .78rem; background: var(--surface-2); border-radius: 5px; padding: 1px 6px; margin-right: 5px; }
+
+@media (max-width: 560px) {
+  .builder-line { flex-wrap: wrap; }
+  .input-path { flex: 1 1 100%; }
+  .param-row { grid-template-columns: 1fr 1fr 32px; }
+}

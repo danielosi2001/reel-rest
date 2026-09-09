@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body>
+  <%- include('partials/header', { page }) %>
+
+  <main class="shell">
+
+    <section class="progress" aria-label="Progress">
+      <div class="progress-top">
+        <p class="progress-label">Stage <b id="stage-now">1</b> of <b id="stage-total"><%= stages.length %></b></p>
+        <p class="progress-stats">
+          <span class="stat"><span class="stat-num" id="score">0</span> solved</span>
+          <span class="stat"><span class="stat-num" id="attempts">0</span> attempts</span>
+        </p>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <ol class="stage-dots" id="stage-dots">
+        <% stages.forEach(function (stage, i) { %>
+          <li>
+            <button type="button" class="dot" data-stage="<%= stage.id %>" data-index="<%= i %>"
+                    disabled aria-label="Stage <%= i + 1 %>: <%= stage.title %>"><%= i + 1 %></button>
+          </li>
+        <% }) %>
+      </ol>
+    </section>
+
+    <section class="brief" aria-labelledby="stage-title">
+      <p class="eyebrow" id="stage-eyebrow">Stage 1</p>
+      <h1 class="stage-title" id="stage-title"><%= stages[0].title %></h1>
+      <p class="scenario" id="stage-scenario"><%= stages[0].scenario %></p>
+      <p class="step-label" id="step-label" hidden></p>
+      <div class="needs" id="stage-needs" aria-label="What this stage needs"></div>
+      <details class="hint">
+        <summary>Stuck? Show a hint</summary>
+        <p id="stage-hint"><%= stages[0].hint %></p>
+      </details>
+    </section>
+
+    <section class="builder-slot" aria-label="Request builder">
+      <div id="builder"></div>
+      <div class="builder-actions">
+        <button type="button" class="btn btn-primary" id="send">Send request</button>
+        <button type="button" class="btn btn-ghost" id="copy-curl">Copy as curl</button>
+        <span class="sent-url mono" id="sent-url"></span>
+      </div>
+    </section>
+
+    <section class="response" aria-label="Response" aria-live="polite">
+      <div class="verdict" id="verdict" hidden>
+        <p class="verdict-text" id="verdict-text"></p>
+        <button type="button" class="btn btn-primary btn-sm" id="next" hidden>Next stage →</button>
+      </div>
+      <div class="response-head">
+        <h2>Response</h2>
+        <span class="status-pill" id="status-pill" hidden></span>
+      </div>
+      <pre class="json" id="response-body"><span class="muted">Send a request and the server's answer shows up here.</span></pre>
+    </section>
+
+    <section class="history" aria-label="Request history">
+      <h2>History</h2>
+      <ol class="history-list" id="history-list">
+        <li class="history-empty">Nothing sent yet.</li>
+      </ol>
+    </section>
+
+  </main>
+
+  <script>
+    // Public stage data only — scenario, hint and which inputs are needed.
+    // The solutions live in src/game/stages/*.js and never leave the server.
+    window.__STAGES__ = <%- JSON.stringify(stages) %>;
+  </script>
+  <script src="/js/api.js"></script>
+  <script src="/js/builder.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>

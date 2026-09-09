@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body>
+  <%- include('partials/header', { page }) %>
+
+  <main class="shell">
+    <section class="brief">
+      <p class="eyebrow">Reference</p>
+      <h1 class="stage-title">Resources and fields</h1>
+      <p class="scenario">Everything the archive stores, and the query params each collection understands. Rendered on the server from <code>src/schemas.js</code>.</p>
+    </section>
+
+    <% schemas.forEach(function (schema) { %>
+      <section class="schema-card">
+        <div class="schema-head">
+          <h2><%= schema.resource %></h2>
+          <code class="mono schema-path"><%= schema.basePath %></code>
+        </div>
+        <p class="scenario"><%= schema.description %></p>
+        <div class="table-wrap">
+          <table class="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <% schema.fields.forEach(function (field) { %>
+                <tr>
+                  <td class="mono"><%= field.name %></td>
+                  <td><span class="type-pill type-<%= field.type %>"><%= field.type %></span></td>
+                  <td class="muted"><%= field.notes %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <p class="schema-meta"><b>Query params:</b>
+          <% schema.query.forEach(function (name) { %><code class="mono"><%= name %></code><% }) %>
+        </p>
+        <p class="schema-meta"><b>Relation:</b> <span class="muted"><%= schema.relation %></span></p>
+      </section>
+    <% }) %>
+  </main>
+</body>
+</html>
