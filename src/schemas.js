@@ -1,24 +1,6 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  the model behind GET /schemas
-//
-// This is data, not markup: server.js hands it to views/schemas.ejs and EJS
-// renders the tables at request time. Nothing here is fetched by the browser,
-// which is the point — the page is server-rendered (SSR), unlike the game
-// screen, which is server-rendered once and then driven by AJAX.
-//
-// It is also the players' manual: every field, every query param and every
-// status code they can meet in the game is described here, and nowhere in it
-// is there a hint about which request belongs to which stage.
-//
-// The movie half is *derived* from src/model/movie.js — the same definition the
-// routes enforce — so the page cannot drift away from the API it documents.
-// (The review half is written out by hand, because those routes are Person B's;
-// test/contract.test.js is what keeps that half honest.)
-// ---------------------------------------------------------------------------
 const store = require('./store');
 const movie = require('./model/movie');
 
-/** The page shows a field's write rules, not its parser. */
 const toFieldRow = ({ name, type, required, example, notes }) => ({ name, type, required, example, notes });
 const toQueryRow = ({ name, type, example, description }) => ({ name, type, example, description });
 
@@ -226,10 +208,6 @@ const statusCodes = [
   { code: 404, name: 'Not Found', meaning: 'The request was fine; the thing it asked for is not here.' },
 ];
 
-/**
- * What the /schemas route renders. The row counts are read at request time, so
- * the page reflects whatever the player has created or deleted so far.
- */
 const pageModel = () => ({
   resources: resources.map((resource) => ({ ...resource, count: store[resource.plural].size })),
   endpoints,

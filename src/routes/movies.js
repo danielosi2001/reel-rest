@@ -1,27 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  the movies resource
-//
-// Mounted at /api/movies by server.js, so the paths declared here are:
-//   GET    /api/movies        list, with filtering + search + sort + paging
-//   GET    /api/movies/:id    one movie
-//   POST   /api/movies        create              -> 201 + Location
-//   PUT    /api/movies/:id    full replace
-//   PATCH  /api/movies/:id    partial update
-//   DELETE /api/movies/:id    remove, cascading to that movie's reviews -> 204
-//
-// What a movie is — its fields, their types, the query params, the limits —
-// lives in src/model/movie.js, which the /schemas page reads too. This file
-// only enforces it.
-//
-// Three rules the whole file follows:
-//   1. Every response body is a JSON *object*, never a bare array, so the game
-//      checker can merge its `_game` verdict into it (see src/game/checker.js).
-//   2. A 400 lists *every* problem at once in `details`, because someone
-//      debugging a request needs all of them, not one per round trip.
-//   3. Nothing is silently ignored. A typo'd query param or an unknown body
-//      field is an error with a suggestion, not a shrug — this API is being
-//      read by people who are still learning what it accepts.
-// ---------------------------------------------------------------------------
 const express = require('express');
 const store = require('../store');
 const { cascadeDeleteForMovie } = require('./reviews');
@@ -47,21 +23,11 @@ const {
 
 const router = express.Router();
 
-// --- responses --------------------------------------------------------------
-
-/** Where else you can go from a movie — the relation, spelled out for the player. */
 const linksFor = (movie) => ({
   self: `/api/movies/${movie.id}`,
   reviews: `/api/movies/${movie.id}/reviews`,
 });
 
-// --- request body -----------------------------------------------------------
-
-/**
- * Reads the writable fields out of a request body.
- * `mustHave` is the list that has to be present — everything for a create or a
- * full replace, nothing for a partial update.
- */
 const readFields = (body, { mustHave = [] } = {}) => {
   const errors = [];
   const values = {};
@@ -93,11 +59,8 @@ const readFields = (body, { mustHave = [] } = {}) => {
   return { errors, values };
 };
 
-/** Builds a whole movie in the model's field order, filling in the defaults. */
 const buildMovie = (values) =>
   Object.fromEntries(WRITABLE.map((field) => [field.name, values[field.name] ?? field.default]));
-
-// --- query string -----------------------------------------------------------
 
 const wholeNumber = (name, raw, { min, max }, errors) => {
   const value = numeric(name, raw, errors);
@@ -111,11 +74,6 @@ const wholeNumber = (name, raw, { min, max }, errors) => {
 
 const matches = (haystack, needle) => haystack.toLowerCase().includes(needle.toLowerCase());
 
-// --- :id ---------------------------------------------------------------------
-// One place decides what a movie id means, so every route below can assume
-// `req.movie` exists. `/api/movies/abc` is a malformed request (400) while
-// `/api/movies/999` is a well-formed request for something absent (404).
-
 router.param('id', (req, res, next, raw) => {
   if (store.toId(raw) === null) {
     return badRequest(res, `"${raw}" is not a movie id — an id is a positive whole number.`);
@@ -127,8 +85,6 @@ router.param('id', (req, res, next, raw) => {
   req.movie = movie;
   return next();
 });
-
-// --- the collection ----------------------------------------------------------
 
 router.get('/', (req, res) => {
   const errors = [];
@@ -170,7 +126,6 @@ router.get('/', (req, res) => {
     if (wanted !== null) data = data.filter((movie) => movie.inStock === (wanted === 'true'));
   }
 
-  // `order` on its own is meaningless: there is nothing to reverse.
   if (order !== undefined && sort === undefined) {
     errors.push('order only makes sense together with sort');
   }
@@ -212,13 +167,8 @@ router.post('/', (req, res) => {
     .json({ data: created, links: linksFor(created) });
 });
 
-// --- one movie ---------------------------------------------------------------
-
 router.get('/:id', (req, res) => res.status(200).json({ data: req.movie, links: linksFor(req.movie) }));
 
-// PUT is a *replace*: the movie becomes exactly what was sent, and the optional
-// fields fall back to their defaults rather than to their old values. That is
-// the whole difference from the PATCH below.
 router.put('/:id', (req, res) => {
   const { errors, values } = readFields(req.body, { mustHave: REQUIRED_NAMES });
   if (errors.length) {
@@ -249,10 +199,8 @@ router.patch('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   store.movies.remove(req.movie.id);
-  // A review cannot outlive its movie, so the relation is cleaned up here.
   const orphans = cascadeDeleteForMovie(req.movie.id);
 
-  // 204 has no body by definition, so what happened rides in a header.
   return res.status(204).set('X-Deleted-Reviews', String(orphans.length)).end();
 });
 

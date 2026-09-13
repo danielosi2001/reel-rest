@@ -1,10 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  test scaffolding
-//
-// Mounts Person A's router the way server.js does, but on an ephemeral port, so
-// the tests exercise the real Express stack (routing, :id params, JSON parsing)
-// without booting the whole app or touching port 3000.
-// ---------------------------------------------------------------------------
 const express = require('express');
 
 const listen = (app) => {

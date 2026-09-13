@@ -1,9 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  the movies resource, end to end over real HTTP.
-//
-// Each test that mutates data creates its own movie first, so the tests do not
-// depend on each other's order or quietly eat the seed rows the game needs.
-// ---------------------------------------------------------------------------
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -30,7 +24,6 @@ test('query params really filter, and they combine', async () => {
   assert.ok(comedies.count > 0);
   assert.ok(comedies.data.every((movie) => movie.genre === 'Comedy'));
 
-  // The stage-4 combination: a text search AND a numeric floor.
   const { data } = (await request('/api/movies?q=blade&minRating=4')).json;
   assert.ok(data.length >= 2);
   assert.ok(data.every((movie) => /blade/i.test(`${movie.title} ${movie.director}`) && movie.rating >= 4));

@@ -1,18 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  stage specs 1-5 (the movies half of the game)
-//
-// SECRET: nothing in this file may ever reach the client. The templates only
-// ever see src/game/publicStages.js output — id, title, scenario, hint, needs.
-//
-// Spec shape (frozen at M0, read by src/game/checker.js):
-//   { id, title, scenario, hint, needs:{routeParam,query,body}, steps:[ step ] }
-//   step = { label?, method, path, query?, allowExtraQuery?, body?, success?, feedback? }
-//   body = { required?:[], equals?:{}, forbidden?:[], exact?:bool }
-//
-// The five stages walk one idea at a time — collection, item, filter+sort,
-// search+filter, create — so no two of them are the same move with a different
-// number in it.
-// ---------------------------------------------------------------------------
 module.exports = [
   {
     id: 1,
@@ -113,8 +98,6 @@ module.exports = [
       {
         method: 'POST',
         path: '/api/movies',
-        // `forbidden` makes the checker refuse a client-invented id for the same
-        // reason POST /api/movies does: the server hands out ids, not the client.
         body: { required: ['title', 'director', 'genre', 'year'], forbidden: ['id'] },
         success:
           '201 Created, and a Location header pointing at the new movie. POST goes to the collection because the collection is what grows; the body carries the data, and the server assigns the id.',

@@ -1,17 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  the in-memory database
-//
-// The brief forbids a real database, so the two JSON seed files are read once
-// at boot and everything after that happens in memory. A restart is the reset
-// button: nothing is ever written back to disk.
-//
-// Reads hand out *copies*. A route can therefore never mutate a stored row by
-// accident — the only way in is add / update / replace / remove — which is what
-// keeps the game honest when a player sends the same wrong request twice.
-//
-// Exported shape (the contract src/routes/*.js depends on):
-//   store.movies / store.reviews -> Collection
-// ---------------------------------------------------------------------------
 const fs = require('fs');
 const path = require('path');
 
@@ -23,13 +9,11 @@ const readSeed = (fileName) => {
   return rows;
 };
 
-/** `"3"` and `3` are the same id; `"abc"`, `-1` and `3.5` are not ids at all. */
 const toId = (value) => {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
-/** Rows are flat, so a shallow copy is a real copy. */
 const copy = (row) => (row ? { ...row } : null);
 
 class Collection {
@@ -45,7 +29,6 @@ class Collection {
     return this.#rows.length;
   }
 
-  /** Every row, in insertion order. */
   get all() {
     return this.getAll();
   }
@@ -66,7 +49,6 @@ class Collection {
     return this.#rows.filter(predicate).map(copy);
   }
 
-  /** The server owns the id — whatever `fields.id` says is thrown away. */
   add(fields) {
     const { id: _ignored, ...rest } = fields;
     const created = { id: this.#nextId++, ...rest };
@@ -74,7 +56,6 @@ class Collection {
     return copy(created);
   }
 
-  /** Partial update (PATCH): merge the given fields, keep the rest, keep the id. */
   update(id, fields) {
     const row = this.#find(id);
     if (!row) return null;
@@ -83,7 +64,6 @@ class Collection {
     return copy(row);
   }
 
-  /** Full replace (PUT): the row becomes exactly what was handed over. */
   replace(id, fields) {
     const index = this.#indexOf(id);
     if (index === -1) return null;
@@ -99,7 +79,6 @@ class Collection {
     return copy(this.#rows.splice(index, 1)[0]);
   }
 
-  /** Used for cascading deletes: drop every row the predicate matches. */
   removeWhere(predicate) {
     const removed = this.#rows.filter(predicate);
     this.#rows = this.#rows.filter((row) => !predicate(row));

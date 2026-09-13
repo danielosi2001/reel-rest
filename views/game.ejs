@@ -75,8 +75,6 @@
   </main>
 
   <script>
-    // Public stage data only — scenario, hint and which inputs are needed.
-    // The solutions live in src/game/stages/*.js and never leave the server.
     window.__STAGES__ = <%- JSON.stringify(stages) %>;
   </script>
   <script src="/js/api.js"></script>
