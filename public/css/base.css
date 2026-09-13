@@ -300,6 +300,16 @@ code, .mono, pre { font-family: var(--mono); }
 .status-pill.is-4xx, .h-status.is-4xx { color: var(--s-4xx); }
 .status-pill.is-5xx, .h-status.is-5xx { color: var(--s-5xx); }
 
+.response-headers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: .78rem;
+}
+.response-headers dt { color: var(--muted); }
+.response-headers dd { margin: 0; overflow-wrap: anywhere; }
+
 pre.json {
   margin: 0;
   padding: 16px;

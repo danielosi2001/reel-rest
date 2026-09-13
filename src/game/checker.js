@@ -1,33 +1,20 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person B  —  the matching engine
-//
-// Mounted at /api, ahead of the real routers. It reads X-Stage-Id / X-Stage-Step,
-// judges the *request* against the secret stage spec, and records the verdict:
-//
-//   * as `_game` merged into any JSON body (patched res.json), and
-//   * as the X-Game-Result header, so 204 responses still carry a verdict.
-//
-// The request then continues to the real route, so a wrong path really does
-// come back 404 — nothing here short-circuits the API.
-// ---------------------------------------------------------------------------
 const stages = require('./stages');
 
-// stageId -> number of attempts made in this server run.
 const attempts = new Map();
 
-function normalizePath(pathname) {
-  if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1);
-  return pathname;
-}
+const normalizePath = (pathname) =>
+  pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
-function isFilled(value) {
+const isFilled = (value) => {
   if (value === undefined || value === null) return false;
   if (typeof value === 'string') return value.trim() !== '';
   if (Array.isArray(value)) return value.length > 0;
   return true;
-}
+};
 
-function checkQuery(step, query) {
+const listOf = (keys) => `\`${keys.join('`, `')}\``;
+
+const checkQuery = (step, query) => {
   const required = step.query || {};
   const requiredKeys = Object.keys(required);
 
@@ -36,7 +23,7 @@ function checkQuery(step, query) {
       return `The query string is missing \`${key}\`.`;
     }
     const expected = required[key];
-    if (expected === null) continue; // key must be present, any value
+    if (expected === null) continue;
     const actual = Array.isArray(query[key]) ? query[key][0] : query[key];
     if (String(actual).toLowerCase() !== String(expected).toLowerCase()) {
       return `\`${key}\` is set to \`${actual}\`, which is not what this stage asks for.`;
@@ -46,56 +33,63 @@ function checkQuery(step, query) {
   if (!step.allowExtraQuery) {
     const extra = Object.keys(query).filter((key) => !requiredKeys.includes(key));
     if (extra.length) {
-      return `This stage does not need the query param${extra.length > 1 ? 's' : ''} \`${extra.join('`, `')}\`.`;
+      return `This stage does not need the query param${extra.length > 1 ? 's' : ''} ${listOf(extra)}.`;
     }
   }
 
   return null;
-}
+};
 
-function checkBody(step, body) {
+const problem = (message, precise = false) => ({ message, precise });
+
+const checkEquals = (field, actual, expected) => {
+  if (actual === expected) return null;
+  if (actual !== undefined && typeof actual !== typeof expected && String(actual) === String(expected)) {
+    return problem(
+      `\`${field}\` is the ${typeof actual} ${JSON.stringify(actual)} — send it as a JSON ${typeof expected}, without the quotes.`,
+      true
+    );
+  }
+  return problem(`\`${field}\` should be \`${JSON.stringify(expected)}\` for this stage.`);
+};
+
+const checkBody = (step, body) => {
   const spec = step.body;
   if (!spec) {
-    if (body && typeof body === 'object' && Object.keys(body).length) {
-      return 'This stage does not send a request body.';
-    }
-    return null;
+    return body && typeof body === 'object' && Object.keys(body).length
+      ? problem('This stage does not send a request body.')
+      : null;
   }
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return 'This stage needs a JSON object as the request body.';
+    return problem('This stage needs a JSON object as the request body.');
   }
 
-  for (const field of spec.required || []) {
-    if (!isFilled(body[field])) {
-      return `The body is missing \`${field}\`.`;
-    }
-  }
+  const missing = (spec.required || []).find((field) => !isFilled(body[field]));
+  if (missing) return problem(`The body is missing \`${missing}\`.`);
 
   for (const [field, expected] of Object.entries(spec.equals || {})) {
-    if (String(body[field]) !== String(expected)) {
-      return `\`${field}\` should be \`${expected}\` for this stage.`;
-    }
+    const mismatch = checkEquals(field, body[field], expected);
+    if (mismatch) return mismatch;
   }
 
-  for (const field of spec.forbidden || []) {
-    if (body[field] !== undefined) {
-      return `Remove \`${field}\` — this stage should only send the field(s) it actually changes.`;
-    }
+  const forbidden = (spec.forbidden || []).find((field) => body[field] !== undefined);
+  if (forbidden) {
+    return problem(`Remove \`${forbidden}\` — this stage should only send the field(s) it actually changes.`);
   }
 
   if (spec.exact) {
     const allowed = new Set([...(spec.required || []), ...Object.keys(spec.equals || {})]);
     const extra = Object.keys(body).filter((key) => !allowed.has(key));
     if (extra.length) {
-      return `Remove \`${extra.join('`, `')}\` — this stage should only send the field(s) it actually changes.`;
+      return problem(`Remove ${listOf(extra)} — this stage should only send the field(s) it actually changes.`);
     }
   }
 
   return null;
-}
+};
 
-function judge(step, req, fullPath) {
+const judge = (step, req, fullPath) => {
   const feedback = step.feedback || {};
 
   if (req.method.toUpperCase() !== step.method.toUpperCase()) {
@@ -103,7 +97,10 @@ function judge(step, req, fullPath) {
   }
 
   if (normalizePath(fullPath) !== normalizePath(step.path)) {
-    return { correct: false, message: feedback.path || `${normalizePath(fullPath)} is not the resource this stage is about.` };
+    return {
+      correct: false,
+      message: feedback.path || `${normalizePath(fullPath)} is not the resource this stage is about.`,
+    };
   }
 
   const queryProblem = checkQuery(step, req.query);
@@ -113,20 +110,35 @@ function judge(step, req, fullPath) {
 
   const bodyProblem = checkBody(step, req.body);
   if (bodyProblem) {
-    return { correct: false, message: feedback.body || bodyProblem };
+    const message = bodyProblem.precise ? bodyProblem.message : feedback.body || bodyProblem.message;
+    return { correct: false, message };
   }
 
   return { correct: true, message: step.success || 'Correct.' };
-}
+};
 
-function checker(req, res, next) {
+const refusal = (payload) => {
+  const reasons = payload && Array.isArray(payload.details) && payload.details.length
+    ? payload.details.join('; ')
+    : payload && payload.message;
+  return `The request has the right shape, but the server refused it with 400 Bad Request${reasons ? `: ${reasons}` : ''}. Read the response and fix the values.`;
+};
+
+const settle = (game, statusCode, payload) =>
+  game.correct && statusCode === 400
+    ? { ...game, correct: false, stageComplete: false, nextStep: game.step, message: refusal(payload) }
+    : game;
+
+const writeVerdict = (res, game) => {
+  res.locals.game = game;
+  res.set('X-Game-Result', encodeURIComponent(JSON.stringify(game)));
+};
+
+const checker = (req, res, next) => {
   const stageId = Number(req.get('X-Stage-Id'));
   const stage = stages.byId(stageId);
 
-  if (!stage) {
-    // Not a game request (curl, a stray fetch). Leave the API alone.
-    return next();
-  }
+  if (!stage) return next();
 
   const requested = Number(req.get('X-Stage-Step'));
   const stepIndex = Number.isInteger(requested) && requested >= 0 && requested < stage.steps.length
@@ -137,37 +149,32 @@ function checker(req, res, next) {
   const count = (attempts.get(stageId) || 0) + 1;
   attempts.set(stageId, count);
 
-  const fullPath = '/api' + req.path;
-  const verdict = judge(step, req, fullPath);
-
-  const nextStep = verdict.correct ? stepIndex + 1 : stepIndex;
-  const stageComplete = verdict.correct && nextStep >= stage.steps.length;
+  const verdict = judge(step, req, '/api' + req.path);
+  const stageComplete = verdict.correct && stepIndex + 1 >= stage.steps.length;
 
   const game = {
     stageId,
     step: stepIndex,
     stepsTotal: stage.steps.length,
-    nextStep: stageComplete ? stepIndex : nextStep,
+    nextStep: verdict.correct && !stageComplete ? stepIndex + 1 : stepIndex,
     correct: verdict.correct,
     stageComplete,
     message: verdict.message,
     attempts: count,
   };
 
-  res.locals.game = game;
-  // 204 and any non-JSON response still gets a verdict this way.
-  res.set('X-Game-Result', encodeURIComponent(JSON.stringify(game)));
+  writeVerdict(res, game);
 
   const originalJson = res.json.bind(res);
   res.json = (payload) => {
-    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-      return originalJson(Object.assign({}, payload, { _game: game }));
-    }
-    return originalJson({ data: payload, _game: game });
+    const final = settle(game, res.statusCode, payload);
+    if (!res.headersSent) writeVerdict(res, final);
+    const body = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : { data: payload };
+    return originalJson({ ...body, _game: final });
   };
 
-  next();
-}
+  return next();
+};
 
 module.exports = checker;
 module.exports.resetAttempts = () => attempts.clear();

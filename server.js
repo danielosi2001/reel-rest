@@ -77,8 +77,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error', message: 'Something broke on the server.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Reel REST running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Reel REST running at http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

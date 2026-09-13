@@ -54,7 +54,7 @@ const resources = [
       { name: 'minScore', type: 'number', example: 'minScore=4', description: 'Scored that high or higher.' },
       { name: 'author', type: 'string', example: 'author=noa', description: 'Written by that author. Case-insensitive, whole-value match.' },
       { name: 'sort', type: 'string', example: 'sort=score', description: 'Sort by id, score, createdAt or author.' },
-      { name: 'order', type: 'string', example: 'order=desc', description: 'asc (default) or desc.' },
+      { name: 'order', type: 'string', example: 'order=desc', description: 'asc (default) or desc. Only valid together with sort.' },
     ],
     relation: {
       text: 'A review belongs to exactly one movie. Delete the movie and its reviews go with it — nothing is left pointing at a film that is gone.',
@@ -142,6 +142,7 @@ const endpoints = [
     returns: '{ movieId, count, data: [review] }',
     statuses: [
       { code: 200, meaning: 'Here they are — possibly none, if nobody has written one.' },
+      { code: 400, meaning: 'The id is not a number, or a query param was sent — filter at /api/reviews instead.' },
       { code: 404, meaning: 'That movie does not exist, so it has no reviews to list.' },
     ],
   },
@@ -150,10 +151,10 @@ const endpoints = [
     method: 'POST',
     path: '/api/movies/:id/reviews',
     summary: 'Writes a review of that movie. The path says which movie, the body says what the review is.',
-    returns: '{ data: review }',
+    returns: '{ data: review } + Location header',
     statuses: [
-      { code: 201, meaning: 'Created and attached to that movie.' },
-      { code: 400, meaning: 'author, text or score is missing or invalid.' },
+      { code: 201, meaning: 'Created and attached to that movie. Location points at the new review.' },
+      { code: 400, meaning: 'author, text or score is missing or invalid, or the body names a field the server owns.' },
       { code: 404, meaning: 'No movie with that id to review.' },
     ],
   },
@@ -165,7 +166,7 @@ const endpoints = [
     returns: '{ count, data: [review] }',
     statuses: [
       { code: 200, meaning: 'Here is the list.' },
-      { code: 400, meaning: 'A query param was malformed.' },
+      { code: 400, meaning: 'A query param was malformed, unknown, or sent without a value.' },
     ],
   },
   {
@@ -176,7 +177,7 @@ const endpoints = [
     returns: '{ data: review }',
     statuses: [
       { code: 200, meaning: 'Replaced.' },
-      { code: 400, meaning: 'A full replace needs author, score and text.' },
+      { code: 400, meaning: 'A full replace needs author, score and text; movieId, if sent, must be a movie that exists.' },
       { code: 404, meaning: 'No review with that id.' },
     ],
   },
@@ -188,6 +189,7 @@ const endpoints = [
     returns: 'no body',
     statuses: [
       { code: 204, meaning: 'Gone.' },
+      { code: 400, meaning: 'The id is not a number at all.' },
       { code: 404, meaning: 'No review with that id.' },
     ],
   },

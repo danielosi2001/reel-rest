@@ -7,27 +7,21 @@
 // ---------------------------------------------------------------------------
 const stages = require('./stages');
 
-function toPublic(stage) {
-  return {
-    id: stage.id,
-    title: stage.title,
-    scenario: stage.scenario,
-    hint: stage.hint,
-    needs: {
-      routeParam: Boolean(stage.needs && stage.needs.routeParam),
-      query: Boolean(stage.needs && stage.needs.query),
-      body: Boolean(stage.needs && stage.needs.body),
-    },
-    stepsTotal: stage.steps.length,
-    stepLabels: stage.steps.map((step) => step.label || null),
-  };
-}
+const toPublic = (stage) => ({
+  id: stage.id,
+  title: stage.title,
+  scenario: stage.scenario,
+  hint: stage.hint,
+  needs: {
+    routeParam: Boolean(stage.needs && stage.needs.routeParam),
+    query: Boolean(stage.needs && stage.needs.query),
+    body: Boolean(stage.needs && stage.needs.body),
+  },
+  stepsTotal: stage.steps.length,
+  stepLabels: stage.steps.map((step) => step.label || null),
+});
 
 module.exports = {
-  all() {
-    return stages.all().map(toPublic);
-  },
-  count() {
-    return stages.all().length;
-  },
+  all: () => stages.all().map(toPublic),
+  count: () => stages.all().length,
 };
