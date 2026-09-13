@@ -1,7 +1,17 @@
 ((window, document) => {
   'use strict';
 
-  const STAGES = window.__STAGES__ || [];
+  const STORAGE_KEY = 'reel-rest-progress';
+
+  const readStages = () => {
+    try {
+      return JSON.parse(document.querySelector('.shell').dataset.stages || '[]');
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const STAGES = readStages();
 
   const state = {
     index: 0,
@@ -19,7 +29,7 @@
     ['stage-now', 'stage-total', 'score', 'attempts', 'progress-fill', 'stage-dots',
       'stage-eyebrow', 'stage-title', 'stage-scenario', 'step-label', 'stage-needs',
       'stage-hint', 'send', 'copy-curl', 'sent-url', 'verdict', 'verdict-text', 'next',
-      'status-pill', 'response-headers', 'response-body', 'history-list'].forEach((id) => {
+      'status-pill', 'response-headers', 'response-body', 'history-list', 'reset-progress'].forEach((id) => {
       ui[id] = $(id);
     });
   };
@@ -27,6 +37,46 @@
   const current = () => STAGES[state.index];
 
   const isSolved = (id) => state.solved.includes(id);
+
+  const saveProgress = () => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        index: state.index,
+        solved: state.solved,
+        attempts: state.attempts,
+        history: state.history,
+      }));
+    } catch (error) {
+      return;
+    }
+  };
+
+  const loadProgress = () => {
+    let saved = null;
+    try {
+      saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
+    } catch (error) {
+      return;
+    }
+    if (!saved || typeof saved !== 'object') return;
+
+    const ids = STAGES.map((stage) => stage.id);
+    state.solved = Array.isArray(saved.solved) ? [...new Set(saved.solved.filter((id) => ids.includes(id)))] : [];
+    state.attempts = Number.isInteger(saved.attempts) && saved.attempts >= 0 ? saved.attempts : 0;
+    state.history = Array.isArray(saved.history)
+      ? saved.history
+        .filter((entry) => entry && typeof entry.method === 'string' && typeof entry.url === 'string' && Number.isInteger(entry.status))
+        .map(({ method, url, status, correct }) => ({ method, url, status, correct: Boolean(correct) }))
+        .slice(0, 20)
+      : [];
+
+    const firstOpen = STAGES.findIndex((stage) => !state.solved.includes(stage.id));
+    const reachable = firstOpen === -1 ? STAGES.length - 1 : firstOpen;
+    const index = Number.isInteger(saved.index) ? saved.index : 0;
+    state.index = index >= 0 && index < STAGES.length && (index <= reachable || state.solved.includes(STAGES[index].id))
+      ? index
+      : reachable;
+  };
 
   const muted = (text) => {
     const span = document.createElement('span');
@@ -67,6 +117,7 @@
     ui.score.textContent = state.solved.length;
     ui.attempts.textContent = state.attempts;
     ui['progress-fill'].style.width = `${(state.solved.length / STAGES.length) * 100}%`;
+    ui['reset-progress'].hidden = state.attempts === 0 && state.solved.length === 0;
 
     const unlocked = furthestUnlocked();
     ui['stage-dots'].querySelectorAll('.dot').forEach((dot) => {
@@ -162,6 +213,17 @@
     return li;
   };
 
+  const renderHistory = () => {
+    if (!state.history.length) {
+      const empty = document.createElement('li');
+      empty.className = 'history-empty';
+      empty.textContent = 'Nothing sent yet.';
+      ui['history-list'].replaceChildren(empty);
+      return;
+    }
+    ui['history-list'].replaceChildren(...state.history.map(historyItem));
+  };
+
   const pushHistory = (result) => {
     state.history = [
       {
@@ -173,12 +235,13 @@
       ...state.history,
     ].slice(0, 20);
 
-    ui['history-list'].replaceChildren(...state.history.map(historyItem));
+    renderHistory();
   };
 
   const goTo = (index) => {
     state.index = index;
     state.step = 0;
+    saveProgress();
     window.Builder.reset();
     renderStage();
     clearResponse();
@@ -200,8 +263,6 @@
     }
 
     if (!game.correct) {
-      state.step = 0;
-      renderStepLabel(stage);
       renderVerdict('no', game.message, false);
       return;
     }
@@ -249,6 +310,7 @@
       pushHistory(result);
       handleVerdict(result);
       renderProgress();
+      saveProgress();
     } catch (error) {
       renderVerdict('no', `The request could not be sent: ${error.message}`, false);
     } finally {
@@ -280,13 +342,33 @@
     return goTo(Math.min(state.index + 1, STAGES.length - 1));
   };
 
+  const forgetProgress = () => {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const startOver = () => {
+    forgetProgress();
+    state.solved = [];
+    state.attempts = 0;
+    state.history = [];
+    renderHistory();
+    goTo(0);
+  };
+
   const init = () => {
     cacheUi();
+    loadProgress();
     window.Builder.mount($('builder'));
 
     ui.send.addEventListener('click', send);
     ui.next.addEventListener('click', nextStage);
     ui['copy-curl'].addEventListener('click', copyCurl);
+    ui['reset-progress'].addEventListener('click', startOver);
 
     ui['stage-dots'].addEventListener('click', (event) => {
       const dot = event.target.closest('.dot');
@@ -300,6 +382,7 @@
       }
     });
 
+    renderHistory();
     renderStage();
   };
 

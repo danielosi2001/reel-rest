@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const { listen } = require('./support');
 const app = require('../server');
+const { settle } = require('../src/game/checker');
 
 const { server, request, close } = listen(app);
 test.after(() => close());
@@ -66,6 +67,44 @@ test('a 204 carries its verdict in the header, and step 2 of stage 10 expects th
   assert.equal(missing.status, 404);
   assert.equal(missing.json._game.correct, true);
   assert.equal(missing.json._game.stageComplete, true);
+});
+
+test('stage 11 wants the 400 first, then the corrected request', async () => {
+  const review = { author: 'critic', text: 'Ten out of ten.' };
+
+  const valid = await play(11, '/api/movies/3/reviews', { method: 'POST', body: { ...review, score: 5 } });
+  assert.equal(valid.json._game.correct, false, 'step 1 is about sending it as written');
+
+  const refused = await play(11, '/api/movies/3/reviews', { method: 'POST', body: { ...review, score: 10 } });
+  assert.equal(refused.status, 400);
+  assert.equal(refused.json._game.correct, true, 'the expected 400 is the right answer here');
+  assert.equal(refused.json._game.stageComplete, false);
+  assert.equal(refused.json._game.nextStep, 1);
+  assert.equal(verdictHeader(refused).correct, true, 'the header agrees with the body');
+
+  const again = await play(11, '/api/movies/3/reviews', { method: 'POST', body: { ...review, score: 10 } }, 1);
+  assert.equal(again.json._game.correct, false, 'step 2 has to act on what the 400 said');
+
+  const fixed = await play(11, '/api/movies/3/reviews', { method: 'POST', body: { ...review, score: 5 } }, 1);
+  assert.equal(fixed.status, 201);
+  assert.equal(fixed.json._game.correct, true);
+  assert.equal(fixed.json._game.stageComplete, true);
+});
+
+test('a step that expects a status is judged wrong when the server answers something else', () => {
+  const game = { stageId: 11, step: 0, stepsTotal: 2, nextStep: 1, correct: true, stageComplete: false, message: 'ok', attempts: 1 };
+
+  const expected = settle(game, { expectStatus: 400 }, 400, {});
+  assert.equal(expected.correct, true);
+
+  const other = settle(game, { expectStatus: 400, feedback: { status: 'Send it as written.' } }, 404, {});
+  assert.equal(other.correct, false);
+  assert.equal(other.nextStep, 0);
+  assert.equal(other.message, 'Send it as written.');
+
+  assert.equal(settle(game, {}, 400, { message: 'no' }).correct, false, 'without expectStatus a 400 is never a solve');
+  assert.equal(settle(game, {}, 404, {}).correct, true, 'and a 404 is left to the path rule');
+  assert.equal(settle({ ...game, correct: false }, { expectStatus: 400 }, 400, {}).correct, false, 'a wrong request stays wrong');
 });
 
 test('every stage can be solved against the real API', async () => {

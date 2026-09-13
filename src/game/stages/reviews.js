@@ -107,4 +107,42 @@ module.exports = [
       },
     ],
   },
+  {
+    id: 11,
+    title: 'Read the refusal, then fix it',
+    scenario:
+      'A reviewer loved movie #3 and wants to give it a score of 10. Post their review exactly as they wrote it — author, text and score 10 — and read what the server answers. Then send it again the way the server told you it would accept.',
+    hint: 'The first answer is supposed to be an error. A 400 body does not just say "no": its details say which field is wrong and what the allowed range is.',
+    needs: { routeParam: true, query: false, body: true },
+    steps: [
+      {
+        label: 'Step 1 of 2 — post the review exactly as written, score 10.',
+        method: 'POST',
+        path: '/api/movies/3/reviews',
+        body: { required: ['author', 'text'], equals: { score: 10 }, exact: true },
+        expectStatus: 400,
+        success:
+          '400 Bad Request — and the details say exactly why. The server refused to store a score it does not understand instead of quietly saving it. Now fix the one field it named and send again.',
+        feedback: {
+          method: 'Adding a review is the same method as in stage 7.',
+          path: 'The review belongs under movie #3.',
+          body: 'Send author, text and a score of 10 — exactly what the reviewer wrote, nothing more.',
+          status: 'This step is about seeing the refusal. Send the review exactly as written — score 10 — so the server has something to refuse.',
+        },
+      },
+      {
+        label: 'Step 2 of 2 — send it again with a score the server accepts.',
+        method: 'POST',
+        path: '/api/movies/3/reviews',
+        body: { required: ['author', 'text', 'score'], forbidden: ['movieId'] },
+        success:
+          '201 Created. You read an error, found the field it named, and fixed only that — which is most of what debugging an API is.',
+        feedback: {
+          method: 'Still adding the same review.',
+          path: 'Same movie as before — the review still belongs under movie #3.',
+          body: 'Same review, with the score the 400 details allowed.',
+        },
+      },
+    ],
+  },
 ];
