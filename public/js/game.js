@@ -187,7 +187,7 @@
 
   const noVerdictMessage = (result) =>
     result.status === 400
-      ? 'The server could not read that request at all, so it never reached the game. Check that the body is valid JSON.'
+      ? 'The server could not read that body, so the request never reached the game. A request body has to be a JSON object, like { "field": "value" }.'
       : 'The server did not send a verdict for that request. Check the path — it may not be an API route at all.';
 
   const handleVerdict = (result) => {

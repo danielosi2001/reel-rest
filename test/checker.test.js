@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { listen } = require('./support');
 const app = require('../server');
 
-const { request, close } = listen(app);
+const { server, request, close } = listen(app);
 test.after(() => close());
 
 const play = (stageId, path, options = {}, step = 0) =>
@@ -93,7 +93,11 @@ test('an unknown API path is a JSON 404, and bad JSON is a 400', async () => {
   assert.equal(unknown.status, 404);
   assert.equal(unknown.json.error, 'Not Found');
 
-  const malformed = await request('/api/movies', { method: 'POST', body: '{"title": oops' });
-  assert.equal(malformed.status, 400);
-  assert.match(malformed.json.message, /not valid JSON/);
+  const response = await fetch(`http://localhost:${server.address().port}/api/movies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"title": oops',
+  });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).message, /not valid JSON/);
 });
