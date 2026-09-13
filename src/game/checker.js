@@ -68,6 +68,12 @@ const checkBody = (step, body) => {
   const missing = (spec.required || []).find((field) => !isFilled(body[field]));
   if (missing) return problem(`The body is missing \`${missing}\`.`);
 
+  const mistyped = Object.entries(spec.types || {}).find(([field, type]) => typeof body[field] !== type);
+  if (mistyped) {
+    const [field, type] = mistyped;
+    return problem(`\`${field}\` has to be a JSON ${type} — right now it is ${JSON.stringify(body[field])}.`, true);
+  }
+
   for (const [field, expected] of Object.entries(spec.equals || {})) {
     const mismatch = checkEquals(field, body[field], expected);
     if (mismatch) return mismatch;
@@ -131,7 +137,8 @@ const settle = (game, step, statusCode, payload) => {
   if (step.expectStatus !== undefined) {
     if (statusCode === step.expectStatus) return game;
     const feedback = step.feedback && step.feedback.status;
-    return reject(game, feedback || `This step expects the server to answer ${step.expectStatus}, but it answered ${statusCode}.`);
+    const expected = `This step expects the server to answer ${step.expectStatus}, but it answered ${statusCode}.`;
+    return reject(game, feedback ? `${expected} ${feedback}` : expected);
   }
   return statusCode === 400 ? reject(game, refusal(payload)) : game;
 };
@@ -197,5 +204,4 @@ const checker = (req, res, next) => {
 };
 
 module.exports = checker;
-module.exports.resetAttempts = () => attempts.clear();
-module.exports.settle = settle;
+

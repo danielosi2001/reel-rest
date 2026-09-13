@@ -16,10 +16,6 @@ Then open <http://localhost:3000>. (Set `PORT` to use another port.)
 Node 18 or newer. No database, no build step, no bundler, no environment file — the data
 is read from `data/*.json` into memory at boot, and a restart resets everything.
 
-```bash
-npm test        # 56 tests, no test framework to install — node --test
-```
-
 ## Pages
 
 | URL | What it is |
@@ -109,7 +105,7 @@ never rendered, never serialised and never sent. The client receives only
 
 | | Person A | Person B |
 | --- | --- | --- |
-| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5, `test/` | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–11, `test/reviews.test.js`, `test/checker.test.js`, `test/views.test.js` |
+| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5 | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–11 |
 | Front | `public/js/builder.js`, `views/schemas.ejs`, `public/css/components.css`, `public/favicon.ico` | `public/js/api.js`, `public/js/game.js`, `views/game.ejs` + header partial, `public/css/base.css` |
 
 `src/game/stages/index.js` merges the two spec files and `src/routes/shared.js` holds the request

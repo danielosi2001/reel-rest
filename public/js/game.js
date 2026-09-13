@@ -271,8 +271,6 @@
       state.step = game.nextStep;
       renderStepLabel(stage);
       renderVerdict('part', game.message, false);
-      window.Builder.reset();
-      window.Builder.setNeeds(stage.needs);
       return;
     }
 

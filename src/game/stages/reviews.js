@@ -119,7 +119,7 @@ module.exports = [
         label: 'Step 1 of 2 — post the review exactly as written, score 10.',
         method: 'POST',
         path: '/api/movies/3/reviews',
-        body: { required: ['author', 'text'], equals: { score: 10 }, exact: true },
+        body: { required: ['author', 'text'], types: { author: 'string', text: 'string' }, equals: { score: 10 }, exact: true },
         expectStatus: 400,
         success:
           '400 Bad Request — and the details say exactly why. The server refused to store a score it does not understand instead of quietly saving it. Now fix the one field it named and send again.',
@@ -127,14 +127,14 @@ module.exports = [
           method: 'Adding a review is the same method as in stage 7.',
           path: 'The review belongs under movie #3.',
           body: 'Send author, text and a score of 10 — exactly what the reviewer wrote, nothing more.',
-          status: 'This step is about seeing the refusal. Send the review exactly as written — score 10 — so the server has something to refuse.',
+          status: 'Read the response to see why — this step only passes when the server refuses the score of 10.',
         },
       },
       {
         label: 'Step 2 of 2 — send it again with a score the server accepts.',
         method: 'POST',
         path: '/api/movies/3/reviews',
-        body: { required: ['author', 'text', 'score'], forbidden: ['movieId'] },
+        body: { required: ['author', 'text', 'score'], types: { author: 'string', text: 'string', score: 'number' }, forbidden: ['movieId'] },
         success:
           '201 Created. You read an error, found the field it named, and fixed only that — which is most of what debugging an API is.',
         feedback: {
