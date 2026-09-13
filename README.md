@@ -1,6 +1,6 @@
 # Reel REST
 
-A 10-stage browser game that teaches HTTP by making the player compose **real** requests
+An 11-stage browser game that teaches HTTP by making the player compose **real** requests
 against a **real** Express API. The theme is a movie archive with two linked resources —
 `movies` and `reviews`. Every answer is judged on the server.
 
@@ -16,16 +16,26 @@ Then open <http://localhost:3000>. (Set `PORT` to use another port.)
 Node 18 or newer. No database, no build step, no bundler, no environment file — the data
 is read from `data/*.json` into memory at boot, and a restart resets everything.
 
-```bash
-npm test        # 52 tests, no test framework to install — node --test
-```
-
 ## Pages
 
 | URL | What it is |
 | --- | --- |
 | `/` | The game. Server-rendered with EJS, then driven entirely by `fetch` — no page reloads. |
 | `/schemas` | Reference table of both resources, their field types and query params. Also server-rendered. |
+
+## Playing
+
+- Each stage shows its scenario, an optional hint, and which inputs it needs (route param, query params, JSON body).
+- The request builder has a method picker, path, route-param field, query-param rows and a JSON body, with a live
+  preview of the exact URL and a *Copy as curl* button. It only checks syntax — correctness is decided by the server.
+- After sending, the page shows the status code, the `Location` / `X-Deleted-Reviews` headers when present, the JSON
+  body, and a success, partial (multi-step) or error verdict. A wrong answer keeps you on the same step to try again.
+- The header shows *Stage N of 11*, a progress bar, solved stages and attempts; every request lands in the history list.
+- Solved stages stay clickable, so any of them can be replayed.
+- Progress (current stage, solved stages, attempts, history) is saved in the browser's `localStorage` and survives a
+  reload; *Start over* clears it. The server's data still resets whenever the server restarts.
+- The page has no inline JavaScript or CSS: the public stage list reaches `public/js/game.js` as a `data-stages`
+  attribute rendered by EJS.
 
 ## The API
 
@@ -72,6 +82,7 @@ and `/schemas` publishes it, so the documentation cannot drift from the API.
 | 8 | Fix only the rating of movie #1 | `PATCH /api/movies/1` + partial body |
 | 9 | Rewrite review #4 completely | `PUT /api/reviews/4` + full body |
 | 10 | Delete review #2, then read the 404 | `DELETE /api/reviews/2` → `GET /api/movies/999` |
+| 11 | Post a score of 10, read the 400, then fix it | `POST /api/movies/3/reviews` with `score: 10` (expects **400**) → the same with a valid score |
 
 ## How the checking works
 
@@ -85,15 +96,16 @@ never rendered, never serialised and never sent. The client receives only
 3. The request continues to the **real** route — so a wrong path really does return 404.
 4. The verdict is merged into the JSON body as `_game`, and also written to the
    `X-Game-Result` header so that `204 No Content` responses still carry one.
-5. A request of the right shape that the API still answers with `400` is not a solve — the
-   verdict is flipped and carries the API's own `details`, so `{ "score": "5" }` or a rating
-   of `9` cannot pass a stage.
+5. The verdict is settled against the real status code. A step may declare `expectStatus`
+   (stage 11 step 1 expects `400`), and any other status fails it. A step without one is not
+   solved by a `400` — the verdict is flipped and carries the API's own `details`, so
+   `{ "score": "5" }` or a rating of `9` cannot pass a stage.
 
 ## Who did what
 
 | | Person A | Person B |
 | --- | --- | --- |
-| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5, `test/` | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–10, `test/reviews.test.js`, `test/checker.test.js` |
+| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5 | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–11 |
 | Front | `public/js/builder.js`, `views/schemas.ejs`, `public/css/components.css`, `public/favicon.ico` | `public/js/api.js`, `public/js/game.js`, `views/game.ejs` + header partial, `public/css/base.css` |
 
 `src/game/stages/index.js` merges the two spec files and `src/routes/shared.js` holds the request

@@ -147,7 +147,7 @@ code, .mono, pre { font-family: var(--mono); }
 }
 .progress-label { font-size: .9rem; color: var(--muted); }
 .progress-label b { color: var(--ink); font-variant-numeric: tabular-nums; }
-.progress-stats { display: flex; gap: 14px; font-size: .82rem; color: var(--muted); }
+.progress-stats { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; font-size: .82rem; color: var(--muted); }
 .stat-num { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .progress-bar {

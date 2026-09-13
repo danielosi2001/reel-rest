@@ -68,6 +68,12 @@ const checkBody = (step, body) => {
   const missing = (spec.required || []).find((field) => !isFilled(body[field]));
   if (missing) return problem(`The body is missing \`${missing}\`.`);
 
+  const mistyped = Object.entries(spec.types || {}).find(([field, type]) => typeof body[field] !== type);
+  if (mistyped) {
+    const [field, type] = mistyped;
+    return problem(`\`${field}\` has to be a JSON ${type} — right now it is ${JSON.stringify(body[field])}.`, true);
+  }
+
   for (const [field, expected] of Object.entries(spec.equals || {})) {
     const mismatch = checkEquals(field, body[field], expected);
     if (mismatch) return mismatch;
@@ -124,10 +130,18 @@ const refusal = (payload) => {
   return `The request has the right shape, but the server refused it with 400 Bad Request${reasons ? `: ${reasons}` : ''}. Read the response and fix the values.`;
 };
 
-const settle = (game, statusCode, payload) =>
-  game.correct && statusCode === 400
-    ? { ...game, correct: false, stageComplete: false, nextStep: game.step, message: refusal(payload) }
-    : game;
+const reject = (game, message) => ({ ...game, correct: false, stageComplete: false, nextStep: game.step, message });
+
+const settle = (game, step, statusCode, payload) => {
+  if (!game.correct) return game;
+  if (step.expectStatus !== undefined) {
+    if (statusCode === step.expectStatus) return game;
+    const feedback = step.feedback && step.feedback.status;
+    const expected = `This step expects the server to answer ${step.expectStatus}, but it answered ${statusCode}.`;
+    return reject(game, feedback ? `${expected} ${feedback}` : expected);
+  }
+  return statusCode === 400 ? reject(game, refusal(payload)) : game;
+};
 
 const writeVerdict = (res, game) => {
   res.locals.game = game;
@@ -163,18 +177,31 @@ const checker = (req, res, next) => {
     attempts: count,
   };
 
-  writeVerdict(res, game);
+  let final = null;
+  const finalize = (payload) => {
+    if (!final) {
+      final = settle(game, step, res.statusCode, payload);
+      writeVerdict(res, final);
+    }
+    return final;
+  };
 
   const originalJson = res.json.bind(res);
   res.json = (payload) => {
-    const final = settle(game, res.statusCode, payload);
-    if (!res.headersSent) writeVerdict(res, final);
+    const verdictForBody = finalize(payload);
     const body = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : { data: payload };
-    return originalJson({ ...body, _game: final });
+    return originalJson({ ...body, _game: verdictForBody });
+  };
+
+  const originalWriteHead = res.writeHead;
+  res.writeHead = (...args) => {
+    if (typeof args[0] === 'number') res.statusCode = args[0];
+    finalize(null);
+    return originalWriteHead.apply(res, args);
   };
 
   return next();
 };
 
 module.exports = checker;
-module.exports.resetAttempts = () => attempts.clear();
+
