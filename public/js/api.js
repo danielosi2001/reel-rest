@@ -1,58 +1,63 @@
-/* ---------------------------------------------------------------------------
- * OWNER: Person B  —  the fetch wrapper
- *
- * One job: turn what the builder produced into a real HTTP request, attach the
- * stage headers, and hand back a result that game.js can render without having
- * to think about 204s, empty bodies or HTML error pages.
- * ------------------------------------------------------------------------- */
-(function (window) {
+((window) => {
   'use strict';
 
-  function buildUrl(path, query) {
-    var clean = (path || '').trim();
-    if (clean && clean.charAt(0) !== '/') clean = '/' + clean;
+  const SHOWN_HEADERS = ['Location', 'X-Deleted-Reviews'];
 
-    // The path field may already contain a query string; keep whichever the
-    // player typed and append the param rows on top of it.
-    var parts = clean.split('?');
-    var base = parts[0];
-    var params = new URLSearchParams(parts[1] || '');
+  const buildUrl = (path, query) => {
+    let clean = (path || '').trim();
+    if (clean && clean.charAt(0) !== '/') clean = `/${clean}`;
 
-    (query || []).forEach(function (row) {
-      var key = (row.key || '').trim();
+    const [base, search = ''] = clean.split('?');
+    const params = new URLSearchParams(search);
+
+    (query || []).forEach((row) => {
+      const key = (row.key || '').trim();
       if (!key) return;
       params.append(key, row.value == null ? '' : String(row.value).trim());
     });
 
-    var qs = params.toString();
-    return qs ? base + '?' + qs : base;
-  }
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  };
 
-  function readVerdictHeader(response) {
-    var raw = response.headers.get('X-Game-Result');
+  const readVerdictHeader = (response) => {
+    const raw = response.headers.get('X-Game-Result');
     if (!raw) return null;
     try {
       return JSON.parse(decodeURIComponent(raw));
-    } catch (err) {
+    } catch (error) {
       return null;
     }
-  }
+  };
 
-  function methodTakesBody(method) {
-    return ['POST', 'PUT', 'PATCH'].indexOf(method) !== -1;
-  }
+  const readShownHeaders = (response) =>
+    SHOWN_HEADERS
+      .map((name) => ({ name, value: response.headers.get(name) }))
+      .filter((header) => header.value !== null);
 
-  function send(request) {
-    var method = (request.method || 'GET').toUpperCase();
-    var url = buildUrl(request.path, request.query);
+  const methodTakesBody = (method) => ['POST', 'PUT', 'PATCH'].includes(method);
 
-    var options = {
-      method: method,
+  const parseJson = (text, response) => {
+    const isJson = (response.headers.get('Content-Type') || '').includes('application/json');
+    if (!text || !isJson) return null;
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const send = async (request) => {
+    const method = (request.method || 'GET').toUpperCase();
+    const url = buildUrl(request.path, request.query);
+
+    const options = {
+      method,
       headers: {
         Accept: 'application/json',
         'X-Stage-Id': String(request.stageId),
-        'X-Stage-Step': String(request.step || 0)
-      }
+        'X-Stage-Step': String(request.step || 0),
+      },
     };
 
     if (methodTakesBody(method) && request.body != null && request.body !== '') {
@@ -60,37 +65,23 @@
       options.body = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
     }
 
-    return fetch(url, options).then(function (response) {
-      return response.text().then(function (text) {
-        var parsed = null;
-        var isJson = (response.headers.get('Content-Type') || '').indexOf('application/json') !== -1;
+    const response = await fetch(url, options);
+    const text = await response.text();
+    const json = parseJson(text, response);
 
-        if (text && isJson) {
-          try {
-            parsed = JSON.parse(text);
-          } catch (err) {
-            parsed = null;
-          }
-        }
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      method,
+      json,
+      text,
+      empty: text === '',
+      headers: readShownHeaders(response),
+      game: (json && json._game) || readVerdictHeader(response) || null,
+    };
+  };
 
-        // Prefer the verdict merged into the body; fall back to the header,
-        // which is the only channel a 204 has.
-        var game = (parsed && parsed._game) || readVerdictHeader(response) || null;
-
-        return {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          url: url,
-          method: method,
-          json: parsed,
-          text: text,
-          empty: text === '',
-          game: game
-        };
-      });
-    });
-  }
-
-  window.Api = { send: send, buildUrl: buildUrl };
+  window.Api = { send, buildUrl };
 })(window);

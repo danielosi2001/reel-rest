@@ -1,21 +1,3 @@
-/* ---------------------------------------------------------------------------
- * OWNER: Person A  —  the request builder
- *
- * Owns everything inside #builder: the method, the path, the query param rows
- * and the JSON body. It knows how to *compose* a request and nothing else —
- * it never sends one, never scores one, and never learns what the right answer
- * is. game.js drives it through this interface:
- *
- *   Builder.mount(el)          render the controls into el
- *   Builder.setNeeds(needs)    react to what the current stage asks for (a stage
- *                              that takes a route param gets its own field for it)
- *   Builder.getRequest()       -> { method, path, query:[{key,value}], body }
- *   Builder.validate()         -> null | 'message'   (syntax only, never correctness)
- *   Builder.toCurl(request)    -> string
- *   Builder.reset()            back to an empty GET
- *
- * Vanilla JS, no framework, no innerHTML for anything a player typed.
- * ------------------------------------------------------------------------- */
 (function (window, document) {
   'use strict';
 
@@ -29,7 +11,6 @@
 
   const takesBody = (method) => METHODS.some((entry) => entry.name === method && entry.hasBody);
 
-  /** Tiny element factory: h('input', { className, placeholder }, ...children). */
   const h = (tag, props = {}, ...children) => {
     const node = document.createElement(tag);
     Object.entries(props).forEach(([key, value]) => {
@@ -47,8 +28,6 @@
   let root = null;
   let needs = { routeParam: false, query: false, body: false };
   const el = {};
-
-  // --- query param rows ------------------------------------------------------
 
   const addParamRow = ({ key = '', value = '', focus = false } = {}) => {
     const keyInput = h('input', {
@@ -82,7 +61,6 @@
       renderPreview();
     });
 
-    // Enter at the end of a row is the natural "and another one".
     row.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -102,12 +80,6 @@
       value: row.querySelector('.input-value').value,
     }));
 
-  // --- route parameter -------------------------------------------------------
-  // The id of a resource belongs in the *path*, so this field does not send
-  // anything of its own: it fills the `:id` hole in the path, or is appended if
-  // the path has no placeholder. Typing the whole path by hand still works —
-  // the field is an aid, not a detour.
-
   const composePath = (rawPath, param) => {
     const path = rawPath.trim();
     const value = param.trim();
@@ -115,10 +87,6 @@
     if (/:[A-Za-z_]\w*/.test(path)) return path.replace(/:[A-Za-z_]\w*/, encodeURIComponent(value));
     return `${path.replace(/\/+$/, '')}/${encodeURIComponent(value)}`;
   };
-
-  // --- the live preview ------------------------------------------------------
-  // Built with the very same function api.js uses to send, so what the player
-  // reads here is exactly the URL that will leave the browser.
 
   const renderPreview = () => {
     const request = getRequest();
@@ -135,14 +103,11 @@
     el.previewUrl.textContent = window.location.origin + window.Api.buildUrl(path, request.query);
   };
 
-  // --- body ------------------------------------------------------------------
-
   const setBodyError = (message) => {
     el.bodyError.textContent = message || '';
     el.bodyError.hidden = !message;
   };
 
-  /** Called whenever the method or the stage changes. */
   const syncBodyVisibility = () => {
     const method = el.method.value;
     const allowed = takesBody(method);
@@ -166,8 +131,6 @@
       setBodyError(`Not valid JSON yet: ${error.message}`);
     }
   };
-
-  // --- public interface ------------------------------------------------------
 
   const mount = (target) => {
     root = target;
@@ -252,12 +215,10 @@
       el.bodyNote
     );
 
-    // One listener for the whole builder: every field feeds the same preview.
     root.addEventListener('input', renderPreview);
     el.method.addEventListener('change', syncBodyVisibility);
     el.body.addEventListener('input', () => setBodyError(''));
 
-    // Enter in the path field means "send", the way a browser address bar does.
     el.path.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -276,12 +237,8 @@
     if (!needs.routeParam) el.routeParam.value = '';
 
     if (needs.query) {
-      // A stage that wants query params starts with one empty row, so the player
-      // does not have to discover the "+ Add param" button first.
       if (paramRows().length === 0) addParamRow();
     } else {
-      // game.js resets the builder *before* telling it about the new stage, so a
-      // row left over from a query stage would otherwise linger on this one.
       paramRows()
         .filter((row) => !row.querySelector('.input-key').value.trim() && !row.querySelector('.input-value').value.trim())
         .forEach((row) => row.remove());
@@ -304,10 +261,6 @@
     };
   }
 
-  /**
-   * Syntax help only. Whether a request is the *right* request is decided by
-   * the server, in src/game/checker.js — never here.
-   */
   const validate = () => {
     setBodyError('');
     const request = getRequest();
@@ -329,7 +282,6 @@
     return null;
   };
 
-  /** Single quotes are the only thing a shell reads inside '…', so escape those. */
   const shellQuote = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
 
   const toCurl = (request) => {

@@ -17,7 +17,7 @@ Node 18 or newer. No database, no build step, no bundler, no environment file �
 is read from `data/*.json` into memory at boot, and a restart resets everything.
 
 ```bash
-npm test        # 30 tests, no test framework to install — node --test
+npm test        # 52 tests, no test framework to install — node --test
 ```
 
 ## Pages
@@ -37,11 +37,11 @@ npm test        # 30 tests, no test framework to install — node --test
 | PUT | `/api/movies/:id` | Full replace — omitted optional fields go back to their defaults | 200 | 400 / 404 |
 | PATCH | `/api/movies/:id` | Partial update — only the fields you send | 200 | 400 / 404 |
 | DELETE | `/api/movies/:id` | Remove movie **and its reviews** (`X-Deleted-Reviews` says how many) | 204 | 400 / 404 |
-| GET | `/api/movies/:id/reviews` | Reviews of one movie (the relation) | 200 | 404 |
-| POST | `/api/movies/:id/reviews` | Add a review to a movie | 201 | 404 / 400 |
+| GET | `/api/movies/:id/reviews` | Reviews of one movie (the relation) | 200 | 400 / 404 |
+| POST | `/api/movies/:id/reviews` | Add a review to a movie; answers with a `Location` header | 201 | 400 / 404 |
 | GET | `/api/reviews` | List; `minScore`, `author`, `sort`, `order` | 200 | 400 |
-| PUT | `/api/reviews/:id` | Full replace | 200 | 404 / 400 |
-| DELETE | `/api/reviews/:id` | Delete a review | 204 | 404 |
+| PUT | `/api/reviews/:id` | Full replace; `movieId` may move it to another movie | 200 | 400 / 404 |
+| DELETE | `/api/reviews/:id` | Delete a review | 204 | 400 / 404 |
 
 Every response body is a JSON **object** (`{ count, total, data }` or `{ data }`), never a
 bare array, so the game verdict can be merged into it. A 4xx body is
@@ -85,12 +85,16 @@ never rendered, never serialised and never sent. The client receives only
 3. The request continues to the **real** route — so a wrong path really does return 404.
 4. The verdict is merged into the JSON body as `_game`, and also written to the
    `X-Game-Result` header so that `204 No Content` responses still carry one.
+5. A request of the right shape that the API still answers with `400` is not a solve — the
+   verdict is flipped and carries the API's own `details`, so `{ "score": "5" }` or a rating
+   of `9` cannot pass a stage.
 
 ## Who did what
 
 | | Person A | Person B |
 | --- | --- | --- |
-| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5, `test/` | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–10 |
+| Back | `data/*.json`, `src/store.js`, `src/model/movie.js`, `src/routes/movies.js`, `src/schemas.js` + `GET /schemas`, stage specs 1–5, `test/` | `server.js`, `src/routes/reviews.js`, `src/game/checker.js`, `src/game/publicStages.js`, stage specs 6–10, `test/reviews.test.js`, `test/checker.test.js` |
 | Front | `public/js/builder.js`, `views/schemas.ejs`, `public/css/components.css`, `public/favicon.ico` | `public/js/api.js`, `public/js/game.js`, `views/game.ejs` + header partial, `public/css/base.css` |
 
-`src/game/stages/index.js` merges the two spec files and belongs to neither.
+`src/game/stages/index.js` merges the two spec files and `src/routes/shared.js` holds the request
+helpers both routers use (errors, *did you mean*, query parsing); they belong to neither.

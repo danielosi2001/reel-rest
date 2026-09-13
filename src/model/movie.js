@@ -1,27 +1,9 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  what a movie *is*
-//
-// One definition, two readers:
-//   * src/routes/movies.js  enforces it   (parsing, validation, 400 messages)
-//   * src/schemas.js        publishes it  (the /schemas page)
-//
-// Before this file existed, the field types, the year range, the sortable
-// columns and the page size lived in both places and had to be kept in step by
-// hand — so the documentation could quietly start lying about the API. Now the
-// constraint is written once and the prose is generated from it: change
-// MAX_LIMIT here and both the 400 message and the /schemas table follow.
-// ---------------------------------------------------------------------------
-
-const YEAR = Object.freeze({ min: 1888, max: 2100 }); // 1888: the oldest surviving film.
+const YEAR = Object.freeze({ min: 1888, max: 2100 });
 const RATING = Object.freeze({ min: 0, max: 5, decimals: 1 });
 const MAX_LIMIT = 50;
 
 const SORTABLE = Object.freeze(['id', 'title', 'director', 'genre', 'year', 'rating']);
 const ORDERS = Object.freeze(['asc', 'desc']);
-
-// --- parsers ----------------------------------------------------------------
-// Each returns { value } (parsed and normalised) or { error } (one sentence,
-// which the route hands back in `details`).
 
 const asString = (name) => (raw) =>
   typeof raw === 'string' && raw.trim() !== ''
@@ -48,10 +30,6 @@ const asBoolean = (name) => (raw) => {
   if (raw === 'true' || raw === 'false') return { value: raw === 'true' };
   return { error: `${name} must be true or false` };
 };
-
-// --- the fields -------------------------------------------------------------
-// `writable: false` means the server owns it: the client may read it but never
-// send it. `required` is about creating — POST and PUT both need those four.
 
 const FIELDS = Object.freeze([
   {
@@ -124,11 +102,7 @@ const WRITABLE = Object.freeze(FIELDS.filter((field) => field.writable));
 const WRITABLE_NAMES = Object.freeze(WRITABLE.map((field) => field.name));
 const REQUIRED_NAMES = Object.freeze(WRITABLE.filter((field) => field.required).map((f) => f.name));
 
-/** The order every stored movie is written in, so responses stay predictable. */
 const FIELD_ORDER = Object.freeze(FIELDS.map((field) => field.name));
-
-// --- the query string -------------------------------------------------------
-// `kind` is what the route does with it; the description is what /schemas says.
 
 const QUERY = Object.freeze([
   { name: 'genre', type: 'string', kind: 'filter', example: 'genre=Sci-Fi', description: 'Keeps only that genre. Case-insensitive, whole-value match.' },

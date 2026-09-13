@@ -22,7 +22,7 @@
       </div>
       <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
       <ol class="stage-dots" id="stage-dots">
-        <% stages.forEach(function (stage, i) { %>
+        <% stages.forEach((stage, i) => { %>
           <li>
             <button type="button" class="dot" data-stage="<%= stage.id %>" data-index="<%= i %>"
                     disabled aria-label="Stage <%= i + 1 %>: <%= stage.title %>"><%= i + 1 %></button>
@@ -61,6 +61,7 @@
         <h2>Response</h2>
         <span class="status-pill" id="status-pill" hidden></span>
       </div>
+      <dl class="response-headers mono" id="response-headers" aria-label="Response headers" hidden></dl>
       <pre class="json" id="response-body"><span class="muted">Send a request and the server's answer shows up here.</span></pre>
     </section>
 
@@ -74,8 +75,6 @@
   </main>
 
   <script>
-    // Public stage data only — scenario, hint and which inputs are needed.
-    // The solutions live in src/game/stages/*.js and never leave the server.
     window.__STAGES__ = <%- JSON.stringify(stages) %>;
   </script>
   <script src="/js/api.js"></script>

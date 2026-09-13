@@ -1,11 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person A  —  the contracts that no single unit test would catch.
-//
-// Three things have to stay true together, and nothing but a test enforces it:
-//   1. /schemas documents exactly the API that src/routes/movies.js implements.
-//   2. The documented fields are the fields the data actually has.
-//   3. Not one word of a stage solution reaches the browser.
-// ---------------------------------------------------------------------------
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -27,7 +19,6 @@ const reviewDocs = () => schemas.pageModel().resources.find((resource) => resour
 
 test('every query param the schemas page advertises is really accepted', async () => {
   for (const param of movieDocs().query) {
-    // `example` is the exact query string the page shows the player, e.g. "genre=Sci-Fi".
     const url = param.name === 'order' ? '/api/movies?sort=year&order=desc' : `/api/movies?${param.example}`;
     const { status } = await request(url);
     assert.equal(status, 200, `${param.example} is documented but the API answered ${status}`);

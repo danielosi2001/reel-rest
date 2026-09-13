@@ -1,4 +1,3 @@
-// Merges the two secret spec files. Written once at M0, never edited after.
 const stages = [...require('./movies'), ...require('./reviews')];
 
 module.exports = {

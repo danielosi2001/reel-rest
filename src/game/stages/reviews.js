@@ -1,14 +1,3 @@
-// ---------------------------------------------------------------------------
-// OWNER: Person B  —  stage specs 6-10
-//
-// SECRET: nothing in this file may ever reach the client. Only
-// src/game/publicStages.js is rendered.
-//
-// Spec shape (frozen at M0, read by src/game/checker.js):
-//   { id, title, scenario, hint, needs:{routeParam,query,body}, steps:[ step ] }
-//   step = { label?, method, path, query?, allowExtraQuery?, body?, success?, feedback? }
-//   body = { required?:[], equals?:{}, forbidden?:[], exact?:bool }
-// ---------------------------------------------------------------------------
 module.exports = [
   {
     id: 6,
